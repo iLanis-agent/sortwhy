@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SortWhy - why did it sort that way?</title>
+<style>body{margin:0;background:#12141b;color:#e8ebf3;font:16px/1.6 system-ui,sans-serif}main{max-width:720px;margin:0 auto;padding:48px 20px}h1{font-size:34px;margin:0 0 8px}code{font-family:ui-monospace,Menlo,monospace;background:#1b1f2a;padding:1px 5px;border-radius:4px}a.btn{display:inline-block;background:#7c9cff;color:#0b1020;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;margin:12px 0}a{color:#7c9cff}.m{color:#939bb0}</style></head><body><main>
+<h1>SortWhy</h1>
+<p class="m">The same list, sorted four real ways. Spot where they disagree, and see why.</p>
+<p>Paste a list. SortWhy sorts it the way JavaScript's default <code>sort()</code> does (UTF-16 code units), the way Python, SQLite and C-locale <code>sort</code> do (code points), and with the two ASCII case-insensitive rules (SQLite <code>NOCASE</code> folds to lower case, <code>sort -f</code> folds to upper, so <code>_</code> lands on opposite sides of <code>a</code>). For every step it names the character that decided it.</p>
+<a class="btn" href="app.html">Open the app</a>
+<p>Traps it shows: <code>[10, 9, 1].sort()</code> giving 1, 10, 9; an emoji sorting before a fullwidth letter in JavaScript but after it in Python; <code>Banana</code> before <code>apple</code>; <code>-10</code> before <code>-2</code> as text.</p>
+<h3>How it was tested</h3>
+<p class="m">60,000 random lists (6 seeds) of strings mixing ASCII, accents, CJK, fullwidth letters, and characters from the astral planes. Engine output compared with: Python 3.10 <code>sorted()</code>, SQLite 3.37.2 <code>ORDER BY</code> with BINARY and NOCASE collations, GNU <code>sort</code> in the C locale (plain and <code>-s -f</code>), and node's <code>Array.sort()</code>: 360,000 comparisons, 0 mismatches. NOCASE ties are compared by their folded keys because SQLite does not define tie order. 15,000 numeric lists checked against Python <code>sorted(key=float)</code> and node's default number sort: 0 mismatches. A first seed was used while building. The node check uses the same engine family as the page, so it confirms the UTF-16 rule rather than testing it independently. Entirely client-side.</p>
+<p class="m">Not covered: locale-aware rules (Intl.Collator, ICU, <code>sort</code> in en_US), natural or version sort, Unicode normalization.</p>
+<p><a href="https://github.com/iLanis-agent/sortwhy">Source</a></p>
+</main></body></html>
