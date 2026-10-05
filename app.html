@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SortWhy - why did it sort that way?</title>
+<style>
+:root{--bg:#12141b;--panel:#1b1f2a;--line:#2d3345;--tx:#e8ebf3;--mut:#939bb0;--acc:#7c9cff;--hi:#f0b429;--ok:#47c28b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,sans-serif}
+main{max-width:1040px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}p.sub{color:var(--mut);margin:0 0 14px}
+code,.mono,textarea,pre{font-family:ui-monospace,Menlo,Consolas,monospace}
+textarea{width:100%;height:150px;background:var(--panel);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:15px;resize:vertical}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.presets button{background:var(--panel);border:1px solid var(--line);color:var(--tx);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px}
+.presets button:hover,.presets button.on{border-color:var(--acc)}
+.sum{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.card h2{font-size:14px;margin:0}.card .s{color:var(--mut);font-size:12px;margin:0 0 8px}
+.card ol{margin:0;padding-left:26px;font-family:ui-monospace,Menlo,monospace;font-size:14px}
+.card li{padding:1px 0;white-space:pre-wrap;word-break:break-all}
+.card li.mv{color:var(--hi)}
+details{margin-top:8px;font-size:12px;color:var(--mut)}details summary{cursor:pointer}
+.pair{padding:3px 0;border-top:1px solid var(--line)}.pair b{color:var(--tx);font-weight:500}
+.note{color:var(--mut);font-size:13px}
+footer{color:var(--mut);font-size:12px;margin-top:18px}a{color:var(--acc)}
+.num{border-left:3px solid var(--ok);padding-left:10px;margin:8px 0}
+</style></head><body><main>
+<h1>SortWhy</h1>
+<p class="sub">One item per line. See how four real sorting rules order it, which items move between them, and the exact character that decided each step.</p>
+<textarea id="in" spellcheck="false" aria-label="items to sort"></textarea>
+<div class="presets" id="presets"></div>
+<div id="sum" class="sum"></div>
+<div id="num"></div>
+<div class="grid" id="grid"></div>
+<footer>Highlighted items sit at a different position than in code point order. Type <code>\u{1F600}</code> or <code>\u00e9</code> to enter characters you cannot type. Not covered: locale rules (Intl.Collator, ICU), natural/version sort, Unicode normalization. Rules checked against real tools: see <a href="index.html">About &amp; tests</a>.</footer>
+</main>
+<script src="engine.js"></script>
+<script>
+var PRESETS=[
+['Numbers as text',"10\n9\n1\n100\n2\n21"],
+['Case',"banana\nApple\ncherry\napple\nBanana"],
+['Emoji vs wide z',"\\u{1F600}\nｚ\nz\nZ\n\\u00e9\ne\nf"],
+['Accents',"zebra\n\\u00e9clair\nedge\n\\u00c9te\neagle"],
+['Punctuation',"a_b\nA_B\na b\nab\na-b\na.b\nAB"],
+['File names',"file10\nfile2\nfile1\nFile3\nfile_a"],
+['Negative numbers',"-1\n-10\n-2\n5\n-100\n20"],
+['Prefixes',"ab\na\nabc\n\nB\nb"],
+['Decimals',"1.5\n1.25\n10.1\n2.0\n1.05"],
+['Brackets and case',"a\n[\n_\n`\nZ\nz\n^"]
+];
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e;}
+function unesc(s){return s.replace(/\\u\{([0-9a-fA-F]{1,6})\}/g,function(m,h){var n=parseInt(h,16);return n<=0x10FFFF?String.fromCodePoint(n):m;}).replace(/\\u([0-9a-fA-F]{4})/g,function(m,h){return String.fromCharCode(parseInt(h,16));});}
+var inp=document.getElementById('in'),grid=document.getElementById('grid'),pb=document.getElementById('presets');
+function items(){var t=unesc(inp.value);var a=t.split('\n');if(a.length&&a[a.length-1]==='')a.pop();return a;}
+function render(){
+  var L=items(),order=['utf16','codepoint','nocaselower','nocaseupper'];
+  grid.textContent='';var num=document.getElementById('num');num.textContent='';
+  var res={};order.forEach(function(r){res[r]=SortWhy.sortBy(L,r);});
+  var base=res.codepoint;
+  var distinct={};order.forEach(function(r){distinct[res[r].join('\u0000')]=1;});
+  var sum=document.getElementById('sum');sum.textContent='';
+  if(L.length<2){sum.textContent='Enter at least two lines.';return;}
+  var nd=Object.keys(distinct).length;
+  sum.textContent=nd===1?'All four rules give the same order for this list.':'The rules disagree: '+nd+' different orders from the same '+L.length+' items.';
+  order.forEach(function(r){
+    var R=SortWhy.RULES[r],c=el('div','card');c.appendChild(el('h2',null,R.name));c.appendChild(el('p','s',R.sub));
+    var ol=el('ol');
+    res[r].forEach(function(s,i){var li=el('li',base[i]!==s?'mv':'',s===''?'(empty line)':s);ol.appendChild(li);});
+    c.appendChild(ol);
+    var d=el('details'),sm=el('summary',null,'Why each step');d.appendChild(sm);
+    for(var i=0;i+1<res[r].length;i++){var w=SortWhy.why(res[r][i],res[r][i+1],r);var p=el('div','pair');var b=el('b',null,JSON.stringify(res[r][i])+' then '+JSON.stringify(res[r][i+1]));p.appendChild(b);p.appendChild(el('div',null,w.text));d.appendChild(p);}
+    c.appendChild(d);grid.appendChild(c);
+  });
+  var nm=SortWhy.numeric(L);
+  if(nm){
+    var d=el('div','num');d.appendChild(el('div',null,'Every line is a number. Sorted by value: '+nm.join(', ')));
+    var j=SortWhy.jsNumberDefault(L);
+    if(j&&j.join()!==nm.map(function(x){return String(Number(x));}).join())d.appendChild(el('div','note','JavaScript [..].sort() with no comparator on the same numbers gives: '+j.join(', ')+'  (it compares them as text)'));
+    num.appendChild(d);
+  }
+}
+PRESETS.forEach(function(p,i){var b=el('button',null,p[0]);b.type='button';b.onclick=function(){inp.value=p[1];[].forEach.call(pb.children,function(c){c.classList.remove('on');});b.classList.add('on');render();};pb.appendChild(b);});
+inp.addEventListener('input',function(){[].forEach.call(pb.children,function(c){c.classList.remove('on');});render();});
+inp.value=PRESETS[2][1];pb.children[2].classList.add('on');render();
+</script></body></html>
